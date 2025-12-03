@@ -17,11 +17,11 @@ network-monitoring-dashboard/
 ├── backend/
 │ ├── app.py # FastAPI backend server
 │ ├── my_model.keras # Trained DL model
+| ├── icons/ # Icons for the frontend
 │ └── live_simulation.csv # Sample live network data
 │
 ├── frontend/
 │ ├── index.html # Frontend dashboard page
-│ └── icons/ # Icons for the frontend
 │
 ├── requirements.txt # Python dependencies
 └── README.md # Project documentation
@@ -35,7 +35,8 @@ network-monitoring-dashboard/
 
 #### 2. Clone the repository:
 
-   git clone https://github.com/eman-sameh/network-monitoring-dashboard.git
+   git clone https://github.com/eman-sameh/network-monitoring-dashboard.git  
+   
    cd network-monitoring-dashboard
 
 #### 3. Pull the large files managed by Git LFS:
@@ -44,7 +45,8 @@ network-monitoring-dashboard/
 
 #### 4. (Optional) Create a virtual environment:
 
-   python -m venv venv
+   python -m venv venv  
+   
    venv\Scripts\activate    # On Windows
 
 #### 5. Install the required packages:
