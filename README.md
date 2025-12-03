@@ -35,7 +35,9 @@ git lfs install
 ```
 2. Clone the repository:
 ```
-git clone https://github.com/eman-sameh/network-monitoring-dashboard.git  
+git clone https://github.com/eman-sameh/network-monitoring-dashboard.git
+```
+```
 cd network-monitoring-dashboard
 ```
 3. Pull the large files managed by Git LFS:
