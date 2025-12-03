@@ -15,30 +15,38 @@ This dashboard demonstrates the functionality of an intrusion detection model by
 network-monitoring-dashboard/
 │
 ├── backend/
-│   └── app.py               # FastAPI backend server
-│   └── my_model.keras       # Trained DL model
-│   └── live_simulation.csv  # Sample live network data
+│ ├── app.py # FastAPI backend server
+│ ├── my_model.keras # Trained DL model
+│ └── live_simulation.csv # Sample live network data
 │
 ├── frontend/
-│   └── index.html           # Frontend dashboard page
-│   └── icons/               # Icons for the frontend
+│ ├── index.html # Frontend dashboard page
+│ └── icons/ # Icons for the frontend
 │
-├── requirements.txt         # Python dependencies
-└── README.md                # Project documentation
+├── requirements.txt # Python dependencies
+└── README.md # Project documentation
 
 ## Installation
 
-1. Clone the repository:
+1. Make sure Git LFS is installed (required for the large `live_simulation.csv` file):
+
+git lfs install
+
+2. Clone the repository:
 
 git clone https://github.com/eman-sameh/network-monitoring-dashboard.git
 cd network-monitoring-dashboard
 
-2. (Optional) Create a virtual environment:
+3. Pull the large files managed by Git LFS:
+
+git lfs pull
+
+4. (Optional) Create a virtual environment:
 
 python -m venv venv
-venv\Scripts\activate # On Windows
+venv\Scripts\activate    # On Windows
 
-3. Install the required packages:
+5. Install the required packages:
 
 pip install -r requirements.txt
 
