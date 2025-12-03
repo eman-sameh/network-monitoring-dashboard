@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live IDS Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0/dist/chartjs-chart-matrix.min.js"></script>
+
+<style>
+    body { 
+        font-family: Arial, sans-serif; 
+        background-color:#0D1B2A; 
+        color:#FFFFFF; 
+        margin: 20px;
+    }
+
+    h1, #latest {
+        text-align: left !important;
+        margin-bottom: 10px;
+    }
+
+    .dashboard-row {
+        display: flex;
+        align-items: stretch;
+        gap: 20px;
+        margin-top: 20px;
+        width: 100%;
+    }
+
+    .cards-section {
+        background-color: #0F2237;
+        padding: 20px;
+        border-radius: 12px;
+        flex: 1;
+        display: flex;
+        align-items: center;
+    }
+
+    .cards-container { 
+        width: 100%;
+        display: flex; 
+        justify-content: space-between; 
+        gap: 10px; 
+    }
+
+    .card { 
+        background-color:#122B46; 
+        color:#FFFFFF; 
+        padding:20px; 
+        border-radius:10px; 
+        flex: 1; 
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .card-icon { width: 80px; height: 80px; }
+    .card-text { text-align: left; }
+
+    .gauge-section {
+        width: 200px; 
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background:#0D1B2A;
+        border-radius:12px;
+        padding: 0;
+        text-align: center;
+        height: 80px;
+    }
+
+    .gauge-section h2 {
+        margin: 5px 0 0 0;
+        font-size: 24px;
+    }
+
+    .gauge-wrapper {
+        width: 200px;
+        height: 140px; 
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+    }
+
+    #gaugeChart {
+        max-width: 100%;
+        max-height: 100%;
+    }
+</style>
+</head>
+<body>
+
+<h1>Live Intrusion Detection Dashboard</h1>
+<div id="latest">Latest Prediction: -</div>
+
+<div class="dashboard-row">
+
+    <div class="cards-section">
+        <div class="cards-container">
+
+            <div class="card">
+                <img src="icons/total.png" class="card-icon">
+                <div class="card-text">
+                    <h3>Total Records</h3>
+                    <p id="total">0</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <img src="icons/attack.png" class="card-icon">
+                <div class="card-text">
+                    <h3>Attacks</h3>
+                    <p id="attacks">0</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <img src="icons/normal.png" class="card-icon">
+                <div class="card-text">
+                    <h3>Normal</h3>
+                    <p id="normal">0</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <img src="icons/port.png" class="card-icon">
+                <div class="card-text">
+                    <h3>Most Active Port</h3>
+                    <p id="port">-</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="gauge-section">
+        <h2>Risk Score</h2>
+        <div class="gauge-wrapper">
+            <canvas id="gaugeChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<!-- CONTAINERS ROW: Bar Chart + Line Chart -->
+<div style="display:flex; gap:20px; margin-top:20px;">
+
+    <!-- Bar Chart -->
+    <div style="background:#0F2237; padding:20px; border-radius:12px; width:50%; height:500px;">
+        <h2 style="font-size:24px; text-align:center; margin-bottom:20px;">Attack Count per Destination Port</h2>
+        <canvas id="attackPortChart" width="100%" height="100%"></canvas>
+    </div>
+
+    <!-- Line Chart: Attacks Over Time -->
+    <div style="background:#0F2237; padding:20px; border-radius:12px; width:50%; height:500px;">
+        <h2 style="font-size:24px; text-align:center; margin-bottom:20px;">Attacks Over Time</h2>
+        <canvas id="attacksOverTimeChart" width="100%" height="100%"></canvas>
+    </div>
+
+</div>
+
+<!-- CONTAINERS ROW: Bar Chart + Scatter -->
+<div style="display:flex; gap:20px; margin-top:20px;">
+
+    <!-- Scatter Plot -->
+    <div style="background:#0F2237; padding:20px; border-radius:12px; width:50%; height:500px;">
+        <h2 style="font-size:24px; text-align:center; margin-bottom:20px;">Fwd Packets/s vs Bwd Packets/s</h2>
+        <canvas id="scatterChart" width="100%" height="100%"></canvas>
+    </div>
+
+    <!-- Aggregated Duration Bins Bar Chart -->
+    <div style="background:#0F2237; padding:20px; border-radius:12px; width:50%; height:500px;">
+        <h2 style="font-size:24px; text-align:center; margin-bottom:20px;">Flow Duration Distribution</h2>
+        <canvas id="durationBinChart" width="100%" height="100%"></canvas>
+    </div>
+
+</div>
+
+<script>
+let gaugeChart = null;
+let attackPortChart = null;
+let attacksOverTimeChart = null;
+let durationBinChart = null;
+let scatterChart = null;
+const normalPoints = [];
+const attackPoints = [];
+const portCounts = {}; 
+
+// ---------------- Gauge ----------------
+function createGauge() {
+    const ctx = document.getElementById("gaugeChart").getContext("2d");
+    const gradient = ctx.createLinearGradient(0,0,300,0);
+    gradient.addColorStop(0, "#FFC268");
+    gradient.addColorStop(0.5, "#FAA613");
+    gradient.addColorStop(1, "#F44708");
+
+    const gaugePlugin = {
+        id: "gaugePlugin",
+        afterDraw(chart){
+            const {ctx, chartArea} = chart;
+            const width = chartArea.right - chartArea.left;
+            const height = chartArea.bottom - chartArea.top;
+            const radius = Math.min(width, height*2)/2-10;
+            const centerX = (chartArea.left + chartArea.right)/2;
+            const centerY = chartArea.bottom;
+            const attackPercent = chart.data.datasets[0].data[0];
+            const angle = Math.PI * attackPercent / 100;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = "#0F2237";
+            ctx.lineWidth = 22;
+            ctx.lineCap = "round";
+            ctx.arc(centerX, centerY, radius, Math.PI, 2*Math.PI);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            ctx.shadowColor = "rgba(255, 68, 8, 0.6)";
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 22;
+            ctx.lineCap = "round";
+            ctx.arc(centerX, centerY, radius, Math.PI, Math.PI + angle);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            const needleAngle = Math.PI + angle;
+            ctx.beginPath();
+            ctx.strokeStyle = "#F44708";
+            ctx.lineWidth = 3;
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + radius * Math.cos(needleAngle), centerY + radius * Math.sin(needleAngle));
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.fillStyle = "#F44708";
+            ctx.arc(centerX, centerY, 5, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.restore();
+        }
+    };
+
+    gaugeChart = new Chart(ctx,{
+        type:"doughnut",
+        data:{ datasets:[{data:[0], borderWidth:0, backgroundColor:"transparent"}] },
+        options:{ responsive:true, maintainAspectRatio:false, cutout:"95%", plugins:{legend:{display:false}, tooltip:{enabled:false}} },
+        plugins:[gaugePlugin]
+    });
+}
+
+// ---------------- Bar Chart ----------------
+function createPortChart() {
+    const ctx = document.getElementById("attackPortChart").getContext("2d");
+    attackPortChart = new Chart(ctx, {
+        type: "bar",
+        data: { labels: [], datasets:[{label:"Attack Count", data:[], backgroundColor:"#FAA613"}] },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            layout: { padding: { top: 0, right: 10, bottom: 60, left: 0 } },
+            scales:{
+                x:{ title:{ display:true, text:"Destination Port", color:"white", font:{size:16}, padding:{top:20,right:20,bottom:10,left:60} }, ticks:{ color:"white" } },
+                y:{ title:{ display:true, text:"Attack Count", color:"white", font:{size:16}, padding:{top:0,right:70,bottom:10,left:10} }, ticks:{ color:"white", beginAtZero:true } }
+            },
+            plugins:{ legend:{ display:false }, tooltip:{ enabled:true } }
+        }
+    });
+}
+
+function getLineGradient(ctx, chartArea) {
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+    gradient.addColorStop(0, "rgba(250,166,19,0.45)");   
+    gradient.addColorStop(1, "rgba(250,166,19,0)");      
+    return gradient;
+}
+
+// ---------------- Line Chart ----------------
+function createAttacksOverTimeChart() {
+    const ctx = document.getElementById("attacksOverTimeChart").getContext("2d");
+    attacksOverTimeChart = new Chart(ctx, {
+        type: "line",
+        data: { 
+          labels: [],
+          datasets:[{
+          label:"Attack Count", 
+          data:[], 
+          borderColor:"#FAA613",
+          backgroundColor:(context)=>{
+              const chart = context.chart;
+              const {ctx, chartArea} = chart;
+              if(!chartArea) return null;
+              return getLineGradient(ctx, chartArea);
+          },
+          fill:true,
+          tension:0.35,
+        }] },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            layout: { padding: { top: 0, right: 10, bottom: 60, left: 0 } },
+            scales:{
+                x:{
+                    title:{ display:true, text:"Time (MM:SS)", color:"white", font:{size:16}, padding:{top:20,right:20,bottom:10,left:60} },
+                    ticks:{
+                        color:"white",
+                        callback: function(value,index,values){
+                            const label = this.getLabelForValue(value);
+                            const date = new Date(label);
+                            return date.getMinutes().toString().padStart(2,"0") + ":" + date.getSeconds().toString().padStart(2,"0");
+                        }
+                    }
+                },
+                y:{
+                    title:{ display:true, text:"Attack Count", color:"white", font:{size:16}, padding:{top:0,right:70,bottom:10,left:10} },
+                    beginAtZero: true,
+                    min: 0,
+                    max: 3,
+                    ticks: {
+                        color:"white",
+                        stepSize: 1,
+                        callback: function(value) {
+                            return Number.isInteger(value) ? value : null;
+                        }
+                    }
+                }
+            },
+            plugins:{ 
+              legend:{ display:false }, tooltip:{ enabled:true } ,
+              plugins: {
+                  legend:{ display:false },
+                  tooltip:{ enabled:true },
+                  beforeDraw: (chart) => {
+                      const ctx = chart.ctx;
+                      ctx.save();
+                      ctx.shadowColor = "rgba(250,166,19,0.5)";
+                      ctx.shadowBlur = 12;
+                  },
+                  afterDraw: (chart) => {
+                      chart.ctx.restore();
+                  }
+              }
+            }
+        }
+    });
+}
+
+// ---------------- Scatter Plot ----------------
+function createScatter() {
+    const ctx = document.getElementById("scatterChart").getContext("2d");
+
+    scatterChart = new Chart(ctx, {
+        type: "scatter",
+        data: {
+            datasets: [
+                {
+                    label: "Normal",
+                    data: [],
+                    backgroundColor: "#FAA613", 
+                    pointRadius: 6,
+                },
+                {
+                    label: "Attack",
+                    data: [],
+                    backgroundColor: "#F44708",
+                    pointRadius: 6,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { 
+                padding: { top: 20, right: 20, bottom: 60, left: 0 } 
+            },
+            animation: false,
+            transitions: {
+                active: { animation: false },
+                show: { animation: true },
+                hide: { animation: true }
+            },
+            scales: {
+                x: { 
+                    title: { display: true, text: "Fwd Packets/s", color:"white", font:{size:16}, padding:{top:20,right:20,bottom:10,left:60} },
+                    ticks: { color:"white", stepSize: 5000 }, 
+                    min: 0,  
+                    max: 25000, 
+                },
+                y: { 
+                    title: { display: true, text: "Bwd Packets/s", color:"white", font:{size:16}, padding:{top:0,right:70,bottom:10,left:10} },
+                    ticks: { color:"white", stepSize: 5000 }, 
+                    min: 0,
+                    max: 25000
+                }
+            },
+            plugins: { 
+                legend: { labels: { color:"white", font:{size:14} } }
+            }
+        }
+    });
+}
+
+// ---------------- Bin Chart ----------------
+function createDurationBinChart() {
+    const ctx = document.getElementById("durationBinChart").getContext("2d");
+    durationBinChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [], 
+            datasets: [
+                {
+                    label: 'Normal',
+                    data: [],
+                    backgroundColor: '#FAA613'
+                },
+                {
+                    label: 'Attack',
+                    data: [],
+                    backgroundColor: '#F44708'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { 
+                padding: { top: 20, right: 20, bottom: 60, left: 0 } 
+            },
+            scales: {
+                x: {
+                    title: { 
+                        display: true, 
+                        text: 'Flow Duration (bins)', 
+                        color: 'white', 
+                        font: { size: 16 }, 
+                        padding: { top: 20, right: 20, bottom: 10, left: 60 } 
+                    },
+                    ticks: { color: 'white' },
+                },
+                y: {
+                    title: { 
+                        display: true, 
+                        text: 'Count', 
+                        color: 'white', 
+                        font: { size: 16 }, 
+                        padding: { top: 0, right: 70, bottom: 10, left: 10 } 
+                    },
+                    ticks: { color: 'white', beginAtZero: true }
+                }
+            },
+            plugins: {
+                legend: { labels: { color: 'white', font: { size: 14 } } }
+            }
+        }
+    });
+}
+
+
+// ---------------- Dashboard Update ----------------
+async function updateDashboard() {
+    const response = await fetch("/data");
+    const data = await response.json();
+    if(!data.latest) return;
+
+    document.getElementById("latest").innerText =
+        `Latest Prediction: ${data.latest.label} (score=${data.latest.score.toFixed(3)}) at ${data.latest.timestamp}`;
+    document.getElementById("total").innerText = data.total;
+    document.getElementById("attacks").innerText = data.attacks;
+    document.getElementById("normal").innerText = data.normal;
+    document.getElementById("port").innerText = `${data.most_port} (${data.most_port_hits} hits)`;
+
+    let attackPercent = data.total > 0 ? (data.attacks / data.total) * 100 : 0;
+    gaugeChart.data.datasets[0].data = [attackPercent];
+    gaugeChart.update();
+
+    // ---------------- Update Port Counts ----------------
+    const attackRows = data.table.filter(r => r.label==="ATTACK");
+    attackRows.forEach(r => {
+        const port = r["Destination Port"];
+        portCounts[port] = (portCounts[port] || 0) + 1;
+    });
+    let sortedPorts = Object.entries(portCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(sortedPorts.length===0) sortedPorts=[["-",0]];
+    attackPortChart.data.labels = sortedPorts.map(([port,_])=>port);
+    attackPortChart.data.datasets[0].data = sortedPorts.map(([_,count])=>count);
+    attackPortChart.update();
+
+    // ---------------- Update Attacks Over Time ----------------
+    const timeCounts = {};
+    attackRows.forEach(r => { timeCounts[r.timestamp] = (timeCounts[r.timestamp]||0)+1; });
+    let sortedTimes = Object.entries(timeCounts).sort((a,b)=>new Date(a[0]) - new Date(b[0]));
+    attacksOverTimeChart.data.labels = sortedTimes.map(([t,_])=>t);
+    attacksOverTimeChart.data.datasets[0].data = sortedTimes.map(([_,c])=>c);
+    attacksOverTimeChart.update();
+
+    // ---- SCATTER UPDATE ----
+    data.table.forEach(r => {
+        const point = { x: r["Fwd Packets/s"], y: r["Bwd Packets/s"] };
+
+        if(r.label === "NORMAL") normalPoints.push(point);
+        else attackPoints.push(point);
+    });
+    scatterChart.data.datasets[0].data = normalPoints;
+    scatterChart.data.datasets[1].data = attackPoints;
+    scatterChart.update({duration: 0});
+
+    // ---- DURATION BIN BAR CHART ----
+    const binSize = 5000; 
+    const bins = {};
+
+    attackPoints.forEach(p => {
+        const bin = Math.floor(p.x / binSize);
+        bins[bin] = bins[bin] || { attack: 0, normal: 0 };
+        bins[bin].attack += 1;
+    });
+
+    normalPoints.forEach(p => {
+        const bin = Math.floor(p.x / binSize);
+        if(bins[bin]) { 
+            bins[bin].normal += 1;
+        }
+    });
+
+    const sortedBins = Object.keys(bins).sort((a,b) => a-b);
+    durationBinChart.data.labels = sortedBins.map(b => `${b*binSize}-${(Number(b)+1)*binSize}`);
+    durationBinChart.data.datasets[0].data = sortedBins.map(b => bins[b].normal);
+    durationBinChart.data.datasets[1].data = sortedBins.map(b => bins[b].attack);
+    durationBinChart.update();
+
+}
+
+createGauge();
+createPortChart();
+createAttacksOverTimeChart();
+createScatter();
+createDurationBinChart();  
+setInterval(updateDashboard,1000);
+</script>
+
+</body>
+</html>
