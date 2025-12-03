@@ -11,7 +11,7 @@ This dashboard demonstrates the functionality of an intrusion detection model by
 - Visualization of port-specific attack counts
 
 ## Project Structure
-'''
+```
 network-monitoring-dashboard/
 |
 ├── backend/
@@ -25,8 +25,8 @@ network-monitoring-dashboard/
 │
 ├── requirements.txt # Python dependencies
 └── README.md # Project documentation
+```
 
-'''
 ## Installation
 
 #### 1. Make sure Git LFS is installed (required for the large `live_simulation.csv` file):
