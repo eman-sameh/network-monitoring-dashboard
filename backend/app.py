@@ -49,7 +49,7 @@ app.mount("/icons", StaticFiles(directory="icons"), name="icons")
 
 @app.get("/")
 def read_index():
-    return FileResponse("index.html")
+    return FileResponse("frontend/index.html")
 
 # ---------------- Shared State ----------------
 sequence_buffer = []
