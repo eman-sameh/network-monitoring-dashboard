@@ -30,29 +30,27 @@ network-monitoring-dashboard/
 ## Installation
 
 #### 1. Make sure Git LFS is installed (required for the large `live_simulation.csv` file):
-
-   git lfs install
-
+```
+        git lfs install
+```
 #### 2. Clone the repository:
-
-   git clone https://github.com/eman-sameh/network-monitoring-dashboard.git  
-   
-   cd network-monitoring-dashboard
-
+```
+        git clone https://github.com/eman-sameh/network-monitoring-dashboard.git  
+        cd network-monitoring-dashboard
+```
 #### 3. Pull the large files managed by Git LFS:
-
-   git lfs pull
-
+```
+        git lfs pull
+```
 #### 4. (Optional) Create a virtual environment:
-
-   python -m venv venv  
-   
-   venv\Scripts\activate    # On Windows
-
+```
+        python -m venv venv  
+        venv\Scripts\activate    # On Windows
+```
 #### 5. Install the required packages:
-
-   pip install -r requirements.txt
-
+```
+        pip install -r requirements.txt
+```
 ## Usage
 
 #### 1. Run the backend server:
