@@ -58,7 +58,7 @@ pip install -r requirements.txt
 ## Usage
 
 1. Run the backend server:
-```
+```bash
 uvicorn backend.app:app --reload
 ```
 2. Open `index.html` in your browser to view the dashboard.
