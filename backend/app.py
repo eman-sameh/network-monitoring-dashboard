@@ -11,8 +11,8 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 # ---------------- Config ----------------
-MODEL_FILE = "my_model.keras"
-CSV_FILE = "live_simulation.csv"
+MODEL_FILE = "backend/my_model.keras"
+CSV_FILE = "backend/live_simulation.csv"
 TIMESTEPS = 10
 MAX_ROWS = 20
 
@@ -45,11 +45,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/icons", StaticFiles(directory="icons"), name="icons")
+app.mount("/icons", StaticFiles(directory="backend/icons"), name="icons")
 
 @app.get("/")
 def read_index():
-    return FileResponse("index.html")
+    return FileResponse("frontend/index.html")
 
 # ---------------- Shared State ----------------
 sequence_buffer = []
