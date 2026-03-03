@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.h5
+*.keras
+.env
+.DS_Store
+node_modules/
+.vscode/
+*.log
